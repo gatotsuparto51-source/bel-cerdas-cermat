@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Juri - Cerdas Cermat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #f0f2f5; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #333; margin-bottom: 20px; }
+        #pengumuman {
+            background-color: #fff;
+            border: 3px dashed #ccc;
+            padding: 30px 50px;
+            border-radius: 12px;
+            font-size: 28px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 30px;
+            text-align: center;
+            min-width: 450px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        #pengumuman.aktif {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .btn-reset {
+            background-color: #ffa502;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-reset:hover { background-color: #e58e00; }
+        .info-link { margin-top: 30px; color: #666; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>👨‍⚖️ Panel Kontrol Juri (Admin)</h1>
+    <div id="pengumuman">Menunggu peserta menekan bel...</div>
+    <button class="btn-reset" onclick="resetBel()">🔄 Reset Bel</button>
+
+    <div class="info-link">
+        <p>Link untuk Peserta (buka di tab/perangkat berbeda):</p>
+        <a href="/peserta/a" target="_blank">Link Tim A</a> | 
+        <a href="/peserta/b" target="_blank">Link Tim B</a> | 
+        <a href="/peserta/c" target="_blank">Link Tim C</a>
+    </div>
+
+    <script>
+        let statusSebelumnya = null;
+
+        // ==========================================
+        // PERUBAHAN 1: Fungsi Suara Kemenangan Otomatis untuk Juri
+        // ==========================================
+        function mainkanSuaraMenang() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // Nada A4
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // Naik ke A5
+
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.4);
+            } catch (e) {
+                console.log("Audio diblokir");
+            }
+        }
+
+        function resetBel() {
+            fetch('/reset', { method: 'POST' });
+        }
+
+        setInterval(function() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const kotak = document.getElementById('pengumuman');
+
+                    if (data.pemenang) {
+                        kotak.innerText = "🎉 " + data.pemenang + " yang paling cepat! 🎉";
+                        kotak.classList.add('aktif');
+
+                        // ==========================================
+                        // PERUBAHAN 2: Memanggil suara kemenangan saat ada yang menang
+                        // ==========================================
+                        if (statusSebelumnya === null) {
+                            mainkanSuaraMenang();
+                        }
+                    } else {
+                        kotak.innerText = "Menunggu peserta menekan bel...";
+                        kotak.classList.remove('aktif');
+                    }
+                    statusSebelumnya = data.pemenang;
+                });
+        }, 100);
+    </script>
+</body>
+</html>

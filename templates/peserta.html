@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bel - {{ tim }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background-color: #f0f2f5;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        .btn-bel {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            border: none;
+            font-size: 36px;
+            font-weight: 700;
+            color: white;
+            background-color: {{ warna }};
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: 0.1s;
+        }
+        .btn-bel:active { transform: scale(0.92); }
+        .btn-bel:disabled {
+            background-color: #ccc !important;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #status-teks {
+            margin-top: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🔔 Bel {{ tim }}</h1>
+    
+    <button id="tombolBel" class="btn-bel" onclick="tekanBel()">PENCET!</button>
+    <div id="status-teks">Tekan tombol saat soal dibacakan!</div>
+
+    <script>
+        const namaTim = "{{ tim }}";
+        
+        // ==========================================
+        // PERUBAHAN 1: Fungsi Pembuat Suara Bel Otomatis (Tanpa file .mp3)
+        // ==========================================
+        function mainkanSuaraBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sine'; // Jenis suara gelombang
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nada D5 (suara bel nyaring)
+
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.4); // Durasi suara 0.4 detik
+            } catch (e) {
+                console.log("Audio didukung setelah interaksi user");
+            }
+        }
+
+        function tekanBel() {
+            fetch('/tekan/' + namaTim, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.status === "sukses") {
+                        // ==========================================
+                        // PERUBAHAN 2: Memanggil fungsi suara saat berhasil menekan bel
+                        // ==========================================
+                        mainkanSuaraBeep();
+                        document.getElementById('status-teks').innerText = "Berhasil! Kamu yang tercepat!";
+                    }
+                });
+        }
+
+        setInterval(function() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    const tombol = document.getElementById('tombolBel');
+                    const statusTeks = document.getElementById('status-teks');
+                    
+                    if (data.terkunci) {
+                        tombol.disabled = true;
+                        if (data.pemenang === namaTim) {
+                            statusTeks.innerText = "🏆 Kamu duluan yang memencet bel!";
+                        } else {
+                            statusTeks.innerText = "❌ Duluan " + data.pemenang + ", kamu kalah cepat!";
+                        }
+                    } else {
+                        tombol.disabled = false;
+                        statusTeks.innerText = "Siap-siap... Silakan tekan!";
+                    }
+                });
+        }, 100);
+    </script>
+</body>
+</html>
